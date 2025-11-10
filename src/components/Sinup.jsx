@@ -1,33 +1,78 @@
-import { useNavigate } from "react-router-dom";
+import React, { useState } from "react";
+import axios from "axios";
 
 export default function Sinup() {
-  const navigate = useNavigate();
+  const [form, setForm] = useState({
+    username: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
+  const [message, setMessage] = useState("");
 
-  // close modal
-  const closeModal = () => navigate(-1);
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await axios.post("http://localhost:5000/api/signup", form);
+      setMessage(res.data.message);
+    } catch (err) {
+      setMessage(err.response?.data?.message || "Signup failed");
+    }
+  };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-      <div className="bg-white p-6 shadow-xl rounded-lg w-full max-w-md relative">
-        {/* Close button */}
-        <button
-          onClick={closeModal}
-          className="absolute right-3 top-3 text-gray-500 hover:text-black text-xl"
-        >
-          ✕
-        </button>
-
+    <div className="min-h-screen flex justify-center items-center bg-gray-50 p-6">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white p-6 shadow-lg rounded-lg w-full max-w-md"
+      >
         <h2 className="text-2xl font-bold mb-4">Create Account</h2>
 
-        <input className="w-full border p-2 mb-2 rounded" placeholder="Username" />
-        <input className="w-full border p-2 mb-2 rounded" placeholder="Email" />
-        <input className="w-full border p-2 mb-2 rounded" placeholder="Password" type="password" />
-        <input className="w-full border p-2 mb-4 rounded" placeholder="Confirm Password" type="password" />
+        <input
+          className="w-full border p-2 mb-2 rounded"
+          name="username"
+          placeholder="Username"
+          value={form.username}
+          onChange={handleChange}
+        />
+        <input
+          className="w-full border p-2 mb-2 rounded"
+          name="email"
+          placeholder="Email"
+          type="email"
+          value={form.email}
+          onChange={handleChange}
+        />
+        <input
+          className="w-full border p-2 mb-2 rounded"
+          name="password"
+          placeholder="Password"
+          type="password"
+          value={form.password}
+          onChange={handleChange}
+        />
+        <input
+          className="w-full border p-2 mb-4 rounded"
+          name="confirmPassword"
+          placeholder="Confirm Password"
+          type="password"
+          value={form.confirmPassword}
+          onChange={handleChange}
+        />
 
-        <button className="bg-indigo-600 text-white w-full py-2 rounded hover:bg-indigo-700">
+        <button
+          className="bg-indigo-600 text-white w-full py-2 rounded hover:bg-indigo-700"
+          type="submit"
+        >
           Sign Up
         </button>
-      </div>
+
+        {message && <p className="text-center mt-3 text-sm text-gray-700">{message}</p>}
+      </form>
     </div>
   );
 }

@@ -4,7 +4,6 @@ import Sinup from "./components/Sinup";
 
 export default function App() {
   const location = useLocation(); 
-  debugger;
   const state = location.state || {};
 
   return (
