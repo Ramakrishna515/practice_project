@@ -55,6 +55,36 @@ router.post('/signup', async (req, res) => {
   }
 });
 
+router.post('/signin', async (req, res) => {
+  try {
+    let { email, password } = req.body || {};
+
+    if (typeof email === 'string') email = email.trim().toLowerCase();
+
+    if (!email || !password) {
+      return fail(res, 'MISSING_FIELDS', 'Email and password are required');
+    }
+
+    const user = await User.findOne({ email }).lean();
+
+    if (!user || user.password !== password) {
+      return fail(res, 'INVALID_CREDENTIALS', 'Invalid email or password');
+    }
+
+    // Example: generate a token (in real apps, use JWT or similar)
+    // const token = generateToken(user);
+
+    return ok(res, {
+      message: 'Signed in successfully',
+      user: { _id: user._id, username: user.username, email: user.email },
+      // token,
+    });
+  } catch (err) {
+    console.error('POST /api/signin error:', err);
+    return res.status(500).json({ status: 'ERROR', message: 'Server error' });
+  }
+});
+
 // GET /api/userDetails?username=Chinna
 router.get('/userDetails', async (req, res) => {
   try {
