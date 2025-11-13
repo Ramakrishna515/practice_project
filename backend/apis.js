@@ -1,77 +1,84 @@
+// routes.js
 const { Router } = require('express');
 const mongoose = require('mongoose');
-const { signupSchema } = require('./Model.js');
-
+const { signupSchema } = require('./Model.js'); 
 const router = Router();
 const User = mongoose.models.User || mongoose.model('User', signupSchema);
 
-// POST /api/signup (create new user)
+const fail = (res, code, message, extra = {}) =>
+  res.status(200).json({ status: 'ERROR', code, message, ...extra });
+
+const ok = (res, payload = {}) =>
+  res.status(200).json({ status: 'SUCCESS', ...payload });
+
+// POST /api/signup
 router.post('/signup', async (req, res) => {
   try {
     let { username, email, password, confirmPassword } = req.body || {};
 
-    if (typeof email === 'string') email = email.trim().toLowerCase();
     if (typeof username === 'string') username = username.trim();
+    if (typeof email === 'string') email = email.trim().toLowerCase();
 
     if (!username || !email || !password || !confirmPassword) {
-      return res.status(400).json({ message: 'All fields are required' });
+      return fail(res, 'MISSING_FIELDS', 'All fields are required');
     }
+
     if (password !== confirmPassword) {
-      return res.status(400).json({ message: 'Passwords do not match' });
+      return fail(res, 'PASSWORD_MISMATCH', 'Passwords do not match', { field: 'confirmPassword' });
     }
 
     const [userByName, userByEmail] = await Promise.all([
-      User.findOne({ username }),
-      User.findOne({ email }),
+      User.findOne({ username }).lean(),
+      User.findOne({ email }).lean(),
     ]);
-    if (userByName) return res.status(409).json({ message: 'Username already exists' });
-    if (userByEmail) return res.status(409).json({ message: 'Email already registered' });
+
+    if (userByName) {
+      return fail(res, 'USERNAME_TAKEN', 'Username already exists', { field: 'username' });
+    }
+    if (userByEmail) {
+      return fail(res, 'EMAIL_TAKEN', 'Email already registered', { field: 'email' });
+    }
 
     const doc = await User.create({ username, email, password, confirmPassword });
 
-    return res.status(201).json({
+    return ok(res, {
       message: 'User created',
       user: { _id: doc._id, username: doc.username, email: doc.email },
     });
   } catch (err) {
-    // handle Mongo duplicate key too
     if (err && err.code === 11000) {
       const field = Object.keys(err.keyPattern || {})[0] || 'field';
-      return res.status(409).json({ message: `${field} already registered` });
+      return fail(res, 'DUPLICATE_KEY', `${field} already registered`, { field });
     }
-    console.error('POST /signup error:', err);
-    return res.status(500).json({ message: 'Server error' });
+    console.error('POST /api/signup error:', err);
+    return res.status(500).json({ status: 'ERROR', message: 'Server error' });
   }
 });
 
-
-// GET /api/userDetails?username=Chinna  (optional filter)
+// GET /api/userDetails?username=Chinna
 router.get('/userDetails', async (req, res) => {
   try {
     const search = req.query.username;
-    const filter = search ? { username: { $regex: search, $options: "i" } } : {}
-    const users = await User.find(filter, { username: 1, email: 1 });
-
-    console.log("users --->", users);
-
-    return res.json(users);
+    const filter = search ? { username: { $regex: search, $options: 'i' } } : {};
+    const users = await User.find(filter, { username: 1, email: 1 }).lean();
+    return ok(res, { users });
   } catch (err) {
-    console.error("GET /userDetails error:", err);
-    return res.status(500).json({ message: "Server error" });
+    console.error('GET /userDetails error:', err);
+    return res.status(500).json({ status: 'ERROR', message: 'Server error' });
   }
 });
 
-// GET /api/userDetails/:username  (path param)
+// GET /api/userDetails/:username
 router.get('/userDetails/:username', async (req, res) => {
   try {
     const users = await User.find(
       { username: req.params.username },
       { username: 1, email: 1 }
     ).lean();
-    return res.json(users);
+    return ok(res, { users });
   } catch (err) {
     console.error('GET /userDetails/:username error:', err);
-    return res.status(500).json({ message: 'Server error' });
+    return res.status(500).json({ status: 'ERROR', message: 'Server error' });
   }
 });
 
