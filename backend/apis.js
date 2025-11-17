@@ -8,6 +8,7 @@ const auth = require("./middleware/auth.js");
 const router = Router();
 const User = mongoose.models.User || mongoose.model("User", signupSchema);
 
+// Helper functions for consistent responses
 const fail = (res, code, message, extra = {}) =>
   res.status(200).json({ status: "ERROR", code, message, ...extra });
 
