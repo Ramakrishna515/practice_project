@@ -25,10 +25,13 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
+// MongoDB connection with environment variable support
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/myapp';
+
 (async () => {
   try {
-    await mongoose.connect('mongodb://localhost:27017/myapp');
-    console.log('✅ MongoDB connected');
+    await mongoose.connect(MONGODB_URI);
+    console.log('✅ MongoDB connected to:', MONGODB_URI);
   } catch (err) {
     console.error('❌ MongoDB connection error:', err.message);
     process.exit(1);

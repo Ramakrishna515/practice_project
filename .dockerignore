@@ -1,0 +1,7 @@
+.git
+.gitignore
+README.md
+ROOT_STRUCTURE.md
+DOCKER_LEARNING.md
+node_modules
+.DS_Store
