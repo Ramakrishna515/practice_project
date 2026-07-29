@@ -1,50 +1,36 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Grid,
-  Paper,
-  Typography,
   Box,
+  Grid,
   Card,
-  CardContent
+  CardContent,
+  Typography,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow
 } from '@mui/material';
 import {
   People,
-  PersonAdd,
+  Business,
   EventNote,
-  AccountBalance
+  AccountBalance,
+  TrendingUp
 } from '@mui/icons-material';
-import { dashboardAPI } from '../../services/api';
-
-const StatCard = ({ title, value, icon: Icon, color }) => (
-  <Card>
-    <CardContent>
-      <Box display="flex" justifyContent="space-between" alignItems="center">
-        <Box>
-          <Typography color="textSecondary" gutterBottom>
-            {title}
-          </Typography>
-          <Typography variant="h4">{value || 0}</Typography>
-        </Box>
-        <Box
-          sx={{
-            backgroundColor: color || '#1976d2',
-            borderRadius: '50%',
-            p: 2,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-        >
-          <Icon sx={{ color: 'white', fontSize: 40 }} />
-        </Box>
-      </Box>
-    </CardContent>
-  </Card>
-);
+import { dashboardAPI, employeeAPI, leaveAPI, attendanceAPI } from '../../services/api';
 
 export default function Dashboard() {
-  const [stats, setStats] = useState({});
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalEmployees: 0,
+    totalDepartments: 0,
+    pendingLeaves: 0,
+    activeEmployees: 0
+  });
+  const [recentEmployees, setRecentEmployees] = useState([]);
+  const [todayAttendance, setTodayAttendance] = useState([]);
 
   useEffect(() => {
     loadDashboardData();
@@ -52,18 +38,58 @@ export default function Dashboard() {
 
   const loadDashboardData = async () => {
     try {
-      const response = await dashboardAPI.getStats();
-      setStats(response.data.stats);
+      const [employeesRes, leavesRes, attendanceRes] = await Promise.all([
+        employeeAPI.getAll({ limit: 100 }),
+        leaveAPI.getMyLeaves(),
+        attendanceAPI.getAttendance({})
+      ]);
+
+      const employees = employeesRes.data.employees || [];
+      const leaves = leavesRes.data.leaves || [];
+      const attendance = attendanceRes.data.attendance || [];
+
+      setStats({
+        totalEmployees: employees.length,
+        totalDepartments: new Set(employees.map(e => e.employmentInfo?.department?._id)).size,
+        pendingLeaves: leaves.filter(l => l.status === 'Pending').length,
+        activeEmployees: employees.filter(e => e.employmentInfo?.employmentStatus === 'Active').length
+      });
+
+      setRecentEmployees(employees.slice(0, 5));
+      setTodayAttendance(attendance.slice(0, 5));
     } catch (error) {
-      console.error('Error loading dashboard:', error);
-    } finally {
-      setLoading(false);
+      console.error('Error loading dashboard data:', error);
     }
   };
 
-  if (loading) {
-    return <Typography>Loading...</Typography>;
-  }
+  const StatCard = ({ title, value, icon, color }) => (
+    <Card elevation={3}>
+      <CardContent>
+        <Box display="flex" justifyContent="space-between" alignItems="center">
+          <Box>
+            <Typography color="text.secondary" variant="subtitle2">
+              {title}
+            </Typography>
+            <Typography variant="h4" sx={{ mt: 1 }}>
+              {value}
+            </Typography>
+          </Box>
+          <Box
+            sx={{
+              backgroundColor: color,
+              borderRadius: '50%',
+              p: 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            {icon}
+          </Box>
+        </Box>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <Box>
@@ -71,39 +97,36 @@ export default function Dashboard() {
         Dashboard
       </Typography>
 
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
+      <Grid container spacing={3} mb={3}>
+        <Grid item xs={12} md={3}>
           <StatCard
             title="Total Employees"
             value={stats.totalEmployees}
-            icon={People}
+            icon={<People sx={{ color: 'white' }} />}
             color="#1976d2"
           />
         </Grid>
-
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} md={3}>
           <StatCard
-            title="Today's Attendance"
-            value={stats.todayAttendance}
-            icon={PersonAdd}
+            title="Departments"
+            value={stats.totalDepartments}
+            icon={<Business sx={{ color: 'white' }} />}
             color="#2e7d32"
           />
         </Grid>
-
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} md={3}>
           <StatCard
             title="Pending Leaves"
             value={stats.pendingLeaves}
-            icon={EventNote}
+            icon={<EventNote sx={{ color: 'white' }} />}
             color="#ed6c02"
           />
         </Grid>
-
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} md={3}>
           <StatCard
-            title="Pending Payslips"
-            value={stats.pendingPayslips}
-            icon={AccountBalance}
+            title="Active Employees"
+            value={stats.activeEmployees}
+            icon={<TrendingUp sx={{ color: 'white' }} />}
             color="#9c27b0"
           />
         </Grid>
@@ -111,28 +134,60 @@ export default function Dashboard() {
 
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 2 }}>
+          <Paper elevation={3} sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
-              Quick Stats
+              Recent Employees
             </Typography>
-            <Typography>Active Employees: {stats.activeEmployees}</Typography>
-            <Typography>Welcome to the HRMS System!</Typography>
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Employee ID</TableCell>
+                    <TableCell>Name</TableCell>
+                    <TableCell>Department</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {recentEmployees.map((emp) => (
+                    <TableRow key={emp._id}>
+                      <TableCell>{emp.employeeId}</TableCell>
+                      <TableCell>
+                        {emp.personalInfo?.firstName} {emp.personalInfo?.lastName}
+                      </TableCell>
+                      <TableCell>{emp.employmentInfo?.department?.departmentName || 'N/A'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </Paper>
         </Grid>
 
         <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 2 }}>
+          <Paper elevation={3} sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
-              System Modules
+              Recent Attendance
             </Typography>
-            <ul>
-              <li>Employee Management</li>
-              <li>Organization Structure</li>
-              <li>Employee Onboarding</li>
-              <li>Attendance Tracking</li>
-              <li>Leave Management</li>
-              <li>Payroll Processing</li>
-            </ul>
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Date</TableCell>
+                    <TableCell>Check In</TableCell>
+                    <TableCell>Status</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {todayAttendance.map((att) => (
+                    <TableRow key={att._id}>
+                      <TableCell>{new Date(att.date).toLocaleDateString()}</TableCell>
+                      <TableCell>{att.checkIn ? new Date(att.checkIn).toLocaleTimeString() : 'N/A'}</TableCell>
+                      <TableCell>{att.status}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </Paper>
         </Grid>
       </Grid>
