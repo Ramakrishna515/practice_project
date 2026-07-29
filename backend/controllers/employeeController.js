@@ -72,6 +72,13 @@ exports.getEmployeeById = async (req, res) => {
 // Create new employee
 exports.createEmployee = async (req, res) => {
   try {
+    // Auto-generate employeeId if not provided
+    if (!req.body.employeeId) {
+      // Get the count of existing employees
+      const count = await Employee.countDocuments();
+      req.body.employeeId = `BKN${count + 1}`;
+    }
+
     const employee = new Employee({
       ...req.body,
       createdBy: req.user._id
@@ -84,7 +91,7 @@ exports.createEmployee = async (req, res) => {
       employee
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(400).json({ message: error.message });
   }
 };
 

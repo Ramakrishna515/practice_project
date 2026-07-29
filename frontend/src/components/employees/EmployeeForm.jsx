@@ -12,7 +12,9 @@ import {
   Tabs,
   Tab,
   Card,
-  CardContent
+  CardContent,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 import { employeeAPI, organizationAPI } from '../../services/api';
@@ -34,6 +36,11 @@ export default function EmployeeForm() {
   const [currentTab, setCurrentTab] = useState(0);
   const [departments, setDepartments] = useState([]);
   const [designations, setDesignations] = useState([]);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success' // 'success' | 'error' | 'warning' | 'info'
+  });
   const [formData, setFormData] = useState({
     // Personal Info
     personalInfo: {
@@ -155,6 +162,14 @@ export default function EmployeeForm() {
     });
   };
 
+  const showSnackbar = (message, severity = 'success') => {
+    setSnackbar({ open: true, message, severity });
+  };
+
+  const closeSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
+
   const cleanFormData = (data) => {
     // Remove empty strings and convert to undefined
     const cleaned = JSON.parse(JSON.stringify(data, (key, value) => {
@@ -175,15 +190,17 @@ export default function EmployeeForm() {
 
       if (isEdit) {
         await employeeAPI.update(id, cleanedData);
-        alert('Employee updated successfully!');
+        showSnackbar('Employee updated successfully!', 'success');
+        setTimeout(() => navigate('/employees'), 1500);
       } else {
         await employeeAPI.create(cleanedData);
-        alert('Employee created successfully!');
+        showSnackbar('Employee created successfully!', 'success');
+        setTimeout(() => navigate('/employees'), 1500);
       }
-      navigate('/employees');
     } catch (error) {
       console.error('Error saving employee:', error);
-      alert('Error saving employee: ' + (error.response?.data?.message || error.message));
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to save employee';
+      showSnackbar(errorMessage, 'error');
     } finally {
       setLoading(false);
     }
@@ -597,6 +614,23 @@ export default function EmployeeForm() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={closeSnackbar}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={closeSnackbar}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

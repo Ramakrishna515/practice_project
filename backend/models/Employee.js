@@ -3,8 +3,8 @@ const mongoose = require('mongoose');
 const employeeSchema = new mongoose.Schema({
   employeeId: {
     type: String,
-    required: true,
-    unique: true
+    unique: true,
+    sparse: true // Allows null/undefined during creation, auto-generated in controller
   },
   personalInfo: {
     firstName: { type: String, required: true },
