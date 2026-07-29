@@ -12,7 +12,8 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  Button
+  Button,
+  Tooltip
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -25,10 +26,11 @@ import {
   AccountBalance as AccountBalanceIcon,
   Logout as LogoutIcon
 } from '@mui/icons-material';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
-const drawerWidth = 240;
+const drawerWidthExpanded = 240;
+const drawerWidthCollapsed = 65;
 
 const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
@@ -42,7 +44,9 @@ const menuItems = [
 
 export default function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [drawerExpanded, setDrawerExpanded] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuth();
 
   const handleDrawerToggle = () => {
@@ -54,25 +58,56 @@ export default function Layout() {
     navigate('/login');
   };
 
-  const drawer = (
-    <div>
-      <Toolbar>
-        <Typography variant="h6" noWrap component="div">
-          HRMS System
-        </Typography>
+  const isPathActive = (path) => {
+    if (path === '/') return location.pathname === '/';
+    return location.pathname.startsWith(path);
+  };
+
+  const drawer = (isCollapsed) => (
+    <Box>
+      <Toolbar sx={{ minHeight: 64, display: 'flex', justifyContent: 'center' }}>
+        {!isCollapsed && (
+          <Typography variant="h6" noWrap component="div">
+            HRMS
+          </Typography>
+        )}
+        {isCollapsed && (
+          <Typography variant="h6" component="div">
+            HR
+          </Typography>
+        )}
       </Toolbar>
       <Divider />
       <List>
         {menuItems.map((item) => (
-          <ListItem key={item.text} disablePadding>
-            <ListItemButton onClick={() => navigate(item.path)}>
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.text} />
-            </ListItemButton>
-          </ListItem>
+          <Tooltip key={item.text} title={isCollapsed ? item.text : ''} placement="right">
+            <ListItem disablePadding>
+              <ListItemButton
+                onClick={() => navigate(item.path)}
+                selected={isPathActive(item.path)}
+                sx={{
+                  minHeight: 48,
+                  justifyContent: isCollapsed ? 'center' : 'initial',
+                  px: 2.5,
+                }}
+              >
+                <ListItemIcon
+                  sx={{
+                    minWidth: 0,
+                    mr: isCollapsed ? 0 : 3,
+                    justifyContent: 'center',
+                    color: isPathActive(item.path) ? 'primary.main' : 'inherit'
+                  }}
+                >
+                  {item.icon}
+                </ListItemIcon>
+                {!isCollapsed && <ListItemText primary={item.text} />}
+              </ListItemButton>
+            </ListItem>
+          </Tooltip>
         ))}
       </List>
-    </div>
+    </Box>
   );
 
   return (
@@ -106,41 +141,54 @@ export default function Layout() {
         </Toolbar>
       </AppBar>
 
-      <Box
-        component="nav"
-        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+      {/* Mobile Drawer */}
+      <Drawer
+        variant="temporary"
+        open={mobileOpen}
+        onClose={handleDrawerToggle}
+        ModalProps={{ keepMounted: true }}
+        sx={{
+          display: { xs: 'block', sm: 'none' },
+          '& .MuiDrawer-paper': {
+            boxSizing: 'border-box',
+            width: drawerWidthExpanded,
+            mt: 8
+          }
+        }}
       >
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={handleDrawerToggle}
-          ModalProps={{ keepMounted: true }}
-          sx={{
-            display: { xs: 'block', sm: 'none' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth }
-          }}
-        >
-          {drawer}
-        </Drawer>
-        <Drawer
-          variant="permanent"
-          sx={{
-            display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth }
-          }}
-          open
-        >
-          {drawer}
-        </Drawer>
-      </Box>
+        {drawer(false)}
+      </Drawer>
+
+      {/* Desktop Collapsible Drawer */}
+      <Drawer
+        variant="permanent"
+        onMouseEnter={() => setDrawerExpanded(true)}
+        onMouseLeave={() => setDrawerExpanded(false)}
+        sx={{
+          display: { xs: 'none', sm: 'block' },
+          '& .MuiDrawer-paper': {
+            boxSizing: 'border-box',
+            width: drawerExpanded ? drawerWidthExpanded : drawerWidthCollapsed,
+            transition: 'width 0.3s',
+            overflowX: 'hidden',
+            mt: 8
+          }
+        }}
+      >
+        {drawer(!drawerExpanded)}
+      </Drawer>
 
       <Box
         component="main"
         sx={{
           flexGrow: 1,
           p: 3,
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          mt: 8
+          width: {
+            sm: `calc(100% - ${drawerExpanded ? drawerWidthExpanded : drawerWidthCollapsed}px)`
+          },
+          ml: { sm: 0 },
+          mt: 8,
+          transition: 'width 0.3s'
         }}
       >
         <Outlet />
