@@ -95,11 +95,20 @@ export default function DepartmentList() {
 
   const handleSubmit = async () => {
     try {
+      // Clean form data - remove empty strings
+      const cleanedData = { ...formData };
+      if (!cleanedData.headOfDepartment || cleanedData.headOfDepartment === '') {
+        delete cleanedData.headOfDepartment;
+      }
+      if (!cleanedData.description || cleanedData.description === '') {
+        delete cleanedData.description;
+      }
+
       if (editMode) {
-        await organizationAPI.updateDepartment(currentDept._id, formData);
+        await organizationAPI.updateDepartment(currentDept._id, cleanedData);
         showSnackbar('Department updated successfully!', 'success');
       } else {
-        await organizationAPI.createDepartment(formData);
+        await organizationAPI.createDepartment(cleanedData);
         showSnackbar('Department created successfully!', 'success');
       }
       handleCloseDialog();

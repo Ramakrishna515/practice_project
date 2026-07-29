@@ -30,12 +30,13 @@ export default function LeaveTypeManagement() {
   const [editMode, setEditMode] = useState(false);
   const [currentLeaveType, setCurrentLeaveType] = useState(null);
   const [formData, setFormData] = useState({
-    leaveName: '',
+    leaveTypeName: '',
     leaveCode: '',
-    totalDays: '',
+    maxDaysPerYear: '',
     description: '',
     isPaid: true,
-    carryForward: false
+    carryForward: false,
+    maxCarryForwardDays: ''
   });
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -68,23 +69,25 @@ export default function LeaveTypeManagement() {
       setEditMode(true);
       setCurrentLeaveType(leaveType);
       setFormData({
-        leaveName: leaveType.leaveName,
+        leaveTypeName: leaveType.leaveTypeName,
         leaveCode: leaveType.leaveCode,
-        totalDays: leaveType.totalDays,
+        maxDaysPerYear: leaveType.maxDaysPerYear,
         description: leaveType.description || '',
         isPaid: leaveType.isPaid !== false,
-        carryForward: leaveType.carryForward === true
+        carryForward: leaveType.carryForward === true,
+        maxCarryForwardDays: leaveType.maxCarryForwardDays || 0
       });
     } else {
       setEditMode(false);
       setCurrentLeaveType(null);
       setFormData({
-        leaveName: '',
+        leaveTypeName: '',
         leaveCode: '',
-        totalDays: '',
+        maxDaysPerYear: '',
         description: '',
         isPaid: true,
-        carryForward: false
+        carryForward: false,
+        maxCarryForwardDays: 0
       });
     }
     setOpenDialog(true);
@@ -93,22 +96,32 @@ export default function LeaveTypeManagement() {
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setFormData({
-      leaveName: '',
+      leaveTypeName: '',
       leaveCode: '',
-      totalDays: '',
+      maxDaysPerYear: '',
       description: '',
       isPaid: true,
-      carryForward: false
+      carryForward: false,
+      maxCarryForwardDays: 0
     });
   };
 
   const handleSubmit = async () => {
     try {
+      // Clean data - remove empty strings
+      const cleanedData = { ...formData };
+      if (!cleanedData.description || cleanedData.description === '') {
+        delete cleanedData.description;
+      }
+      if (!cleanedData.maxCarryForwardDays) {
+        cleanedData.maxCarryForwardDays = 0;
+      }
+
       if (editMode) {
-        await leaveAPI.updateLeaveType(currentLeaveType._id, formData);
+        await leaveAPI.updateLeaveType(currentLeaveType._id, cleanedData);
         showSnackbar('Leave type updated successfully!', 'success');
       } else {
-        await leaveAPI.createLeaveType(formData);
+        await leaveAPI.createLeaveType(cleanedData);
         showSnackbar('Leave type created successfully!', 'success');
       }
       handleCloseDialog();
@@ -175,8 +188,8 @@ export default function LeaveTypeManagement() {
               leaveTypes.map((type) => (
                 <TableRow key={type._id}>
                   <TableCell>{type.leaveCode}</TableCell>
-                  <TableCell>{type.leaveName}</TableCell>
-                  <TableCell>{type.totalDays} days</TableCell>
+                  <TableCell>{type.leaveTypeName}</TableCell>
+                  <TableCell>{type.maxDaysPerYear} days</TableCell>
                   <TableCell>
                     <Chip
                       label={type.isPaid ? 'Paid' : 'Unpaid'}
@@ -224,8 +237,8 @@ export default function LeaveTypeManagement() {
               fullWidth
               label="Leave Name"
               placeholder="e.g., Casual Leave, Sick Leave"
-              value={formData.leaveName}
-              onChange={(e) => setFormData({ ...formData, leaveName: e.target.value })}
+              value={formData.leaveTypeName}
+              onChange={(e) => setFormData({ ...formData, leaveTypeName: e.target.value })}
             />
             <TextField
               required
@@ -240,9 +253,18 @@ export default function LeaveTypeManagement() {
               fullWidth
               type="number"
               label="Total Days Per Year"
-              value={formData.totalDays}
-              onChange={(e) => setFormData({ ...formData, totalDays: e.target.value })}
+              value={formData.maxDaysPerYear}
+              onChange={(e) => setFormData({ ...formData, maxDaysPerYear: e.target.value })}
             />
+            {formData.carryForward && (
+              <TextField
+                fullWidth
+                type="number"
+                label="Max Carry Forward Days"
+                value={formData.maxCarryForwardDays}
+                onChange={(e) => setFormData({ ...formData, maxCarryForwardDays: e.target.value })}
+              />
+            )}
             <TextField
               fullWidth
               label="Description"
@@ -282,7 +304,7 @@ export default function LeaveTypeManagement() {
           <Button
             onClick={handleSubmit}
             variant="contained"
-            disabled={!formData.leaveName || !formData.leaveCode || !formData.totalDays}
+            disabled={!formData.leaveTypeName || !formData.leaveCode || !formData.maxDaysPerYear}
           >
             {editMode ? 'Update' : 'Create'}
           </Button>

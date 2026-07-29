@@ -111,11 +111,23 @@ export default function DesignationList() {
 
   const handleSubmit = async () => {
     try {
+      // Clean form data - remove empty strings for ObjectId fields
+      const cleanedData = { ...formData };
+      if (!cleanedData.department || cleanedData.department === '') {
+        delete cleanedData.department;
+      }
+      if (!cleanedData.description || cleanedData.description === '') {
+        delete cleanedData.description;
+      }
+      if (!cleanedData.level || cleanedData.level === '') {
+        delete cleanedData.level;
+      }
+
       if (editMode) {
-        await organizationAPI.updateDesignation(currentDesig._id, formData);
+        await organizationAPI.updateDesignation(currentDesig._id, cleanedData);
         showSnackbar('Designation updated successfully!', 'success');
       } else {
-        await organizationAPI.createDesignation(formData);
+        await organizationAPI.createDesignation(cleanedData);
         showSnackbar('Designation created successfully!', 'success');
       }
       handleCloseDialog();
