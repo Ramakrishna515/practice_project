@@ -49,13 +49,21 @@ export default function LeaveList() {
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4">My Leave Applications</Typography>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={() => navigate('/leaves/apply')}
-        >
-          Apply for Leave
-        </Button>
+        <Box display="flex" gap={2}>
+          <Button
+            variant="outlined"
+            onClick={() => navigate('/leaves/types')}
+          >
+            Manage Leave Types
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={() => navigate('/leaves/apply')}
+          >
+            Apply for Leave
+          </Button>
+        </Box>
       </Box>
 
       <TableContainer component={Paper}>
