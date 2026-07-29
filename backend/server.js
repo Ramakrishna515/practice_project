@@ -38,8 +38,30 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/myapp'
   }
 })();
 
-app.get('/', (_req, res) => res.json({ ok: true }));
+// Import routes
+const authRoutes = require('./routes/auth');
+const employeeRoutes = require('./routes/employees');
+const organizationRoutes = require('./routes/organization');
+const onboardingRoutes = require('./routes/onboarding');
+const attendanceRoutes = require('./routes/attendance');
+const leaveRoutes = require('./routes/leaves');
+const payrollRoutes = require('./routes/payroll');
+const dashboardRoutes = require('./routes/dashboard');
 
+// Health check
+app.get('/', (_req, res) => res.json({ ok: true, message: 'HRMS API is running' }));
+
+// API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/employees', employeeRoutes);
+app.use('/api/organization', organizationRoutes);
+app.use('/api/onboarding', onboardingRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/leaves', leaveRoutes);
+app.use('/api/payroll', payrollRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+
+// Legacy API router (if needed)
 app.use('/api', apiRouter);
 
 app.use((err, _req, res, _next) => {
