@@ -3,7 +3,7 @@ const { Router } = require("express");
 const mongoose = require("mongoose");
 const { signupSchema } = require("./Model.js");
 const { verifyToken, createToken } = require("./utils/jwtUtils");
-const auth = require("./middleware/auth.js");
+const { auth } = require("./middleware/auth.js");
 
 const router = Router();
 const User = mongoose.models.User || mongoose.model("User", signupSchema);
