@@ -122,16 +122,37 @@ export default function EmployeeForm() {
       const employee = response.data.employee;
 
       // Format dates for input fields
-      if (employee.personalInfo.dateOfBirth) {
+      if (employee.personalInfo?.dateOfBirth) {
         employee.personalInfo.dateOfBirth = employee.personalInfo.dateOfBirth.split('T')[0];
       }
-      if (employee.employmentInfo.joiningDate) {
+      if (employee.employmentInfo?.joiningDate) {
         employee.employmentInfo.joiningDate = employee.employmentInfo.joiningDate.split('T')[0];
       }
 
-      setFormData(employee);
+      // Convert populated department/designation to IDs
+      if (employee.employmentInfo?.department?._id) {
+        employee.employmentInfo.department = employee.employmentInfo.department._id;
+      }
+      if (employee.employmentInfo?.designation?._id) {
+        employee.employmentInfo.designation = employee.employmentInfo.designation._id;
+      }
+
+      // Ensure all nested objects exist
+      const formattedEmployee = {
+        personalInfo: employee.personalInfo || {},
+        contactInfo: {
+          ...employee.contactInfo,
+          emergencyContact: employee.contactInfo?.emergencyContact || { name: '', relationship: '', phone: '' },
+          currentAddress: employee.contactInfo?.currentAddress || { street: '', city: '', state: '', country: '', pincode: '' }
+        },
+        employmentInfo: employee.employmentInfo || {},
+        bankDetails: employee.bankDetails || {}
+      };
+
+      setFormData(formattedEmployee);
     } catch (error) {
       console.error('Error loading employee:', error);
+      showSnackbar('Failed to load employee data', 'error');
     } finally {
       setLoading(false);
     }
@@ -168,6 +189,60 @@ export default function EmployeeForm() {
 
   const closeSnackbar = () => {
     setSnackbar({ ...snackbar, open: false });
+  };
+
+  const validateTab = (tabIndex) => {
+    const errors = [];
+
+    switch (tabIndex) {
+      case 0: // Personal Info
+        if (!formData.personalInfo.firstName?.trim()) {
+          errors.push('First Name is required');
+        }
+        if (!formData.personalInfo.lastName?.trim()) {
+          errors.push('Last Name is required');
+        }
+        break;
+
+      case 1: // Contact Info
+        if (!formData.contactInfo.email?.trim()) {
+          errors.push('Email is required');
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contactInfo.email)) {
+          errors.push('Valid email is required');
+        }
+        if (!formData.contactInfo.phone?.trim()) {
+          errors.push('Phone number is required');
+        }
+        break;
+
+      case 2: // Employment Info
+        if (!formData.employmentInfo.joiningDate) {
+          errors.push('Joining Date is required');
+        }
+        break;
+
+      case 3: // Bank Details (optional)
+        // No required fields
+        break;
+
+      default:
+        break;
+    }
+
+    return errors;
+  };
+
+  const handleNextTab = () => {
+    const errors = validateTab(currentTab);
+    if (errors.length > 0) {
+      showSnackbar(errors.join(', '), 'error');
+      return;
+    }
+    setCurrentTab(currentTab + 1);
+  };
+
+  const handlePreviousTab = () => {
+    setCurrentTab(currentTab - 1);
   };
 
   const cleanFormData = (data) => {
@@ -580,7 +655,7 @@ export default function EmployeeForm() {
                 {currentTab > 0 && (
                   <Button
                     variant="outlined"
-                    onClick={() => setCurrentTab(currentTab - 1)}
+                    onClick={handlePreviousTab}
                   >
                     Previous
                   </Button>
@@ -588,7 +663,7 @@ export default function EmployeeForm() {
                 {currentTab < 3 && (
                   <Button
                     variant="contained"
-                    onClick={() => setCurrentTab(currentTab + 1)}
+                    onClick={handleNextTab}
                   >
                     Next
                   </Button>
