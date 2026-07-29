@@ -155,16 +155,29 @@ export default function EmployeeForm() {
     });
   };
 
+  const cleanFormData = (data) => {
+    // Remove empty strings and convert to undefined
+    const cleaned = JSON.parse(JSON.stringify(data, (key, value) => {
+      if (value === '') return undefined;
+      return value;
+    }));
+
+    // Remove undefined values
+    return JSON.parse(JSON.stringify(cleaned));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      const cleanedData = cleanFormData(formData);
+
       if (isEdit) {
-        await employeeAPI.update(id, formData);
+        await employeeAPI.update(id, cleanedData);
         alert('Employee updated successfully!');
       } else {
-        await employeeAPI.create(formData);
+        await employeeAPI.create(cleanedData);
         alert('Employee created successfully!');
       }
       navigate('/employees');
@@ -258,6 +271,7 @@ export default function EmployeeForm() {
                 value={formData.personalInfo.gender}
                 onChange={(e) => handleChange('personalInfo', 'gender', e.target.value)}
               >
+                <MenuItem value="">Select Gender</MenuItem>
                 <MenuItem value="Male">Male</MenuItem>
                 <MenuItem value="Female">Female</MenuItem>
                 <MenuItem value="Other">Other</MenuItem>
@@ -271,6 +285,7 @@ export default function EmployeeForm() {
                 value={formData.personalInfo.maritalStatus}
                 onChange={(e) => handleChange('personalInfo', 'maritalStatus', e.target.value)}
               >
+                <MenuItem value="">Select Status</MenuItem>
                 <MenuItem value="Single">Single</MenuItem>
                 <MenuItem value="Married">Married</MenuItem>
                 <MenuItem value="Divorced">Divorced</MenuItem>
@@ -441,6 +456,7 @@ export default function EmployeeForm() {
                 value={formData.employmentInfo.department}
                 onChange={(e) => handleChange('employmentInfo', 'department', e.target.value)}
               >
+                <MenuItem value="">Select Department</MenuItem>
                 {departments.map((dept) => (
                   <MenuItem key={dept._id} value={dept._id}>
                     {dept.departmentName}
@@ -456,6 +472,7 @@ export default function EmployeeForm() {
                 value={formData.employmentInfo.designation}
                 onChange={(e) => handleChange('employmentInfo', 'designation', e.target.value)}
               >
+                <MenuItem value="">Select Designation</MenuItem>
                 {designations.map((desig) => (
                   <MenuItem key={desig._id} value={desig._id}>
                     {desig.designationName}
