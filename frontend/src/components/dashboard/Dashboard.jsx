@@ -38,15 +38,31 @@ export default function Dashboard() {
 
   const loadDashboardData = async () => {
     try {
-      const [employeesRes, leavesRes, attendanceRes] = await Promise.all([
-        employeeAPI.getAll({ limit: 100 }),
-        leaveAPI.getMyLeaves(),
-        attendanceAPI.getAttendance({})
-      ]);
+      // Load data with error handling for each API
+      let employees = [];
+      let leaves = [];
+      let attendance = [];
 
-      const employees = employeesRes.data.employees || [];
-      const leaves = leavesRes.data.leaves || [];
-      const attendance = attendanceRes.data.attendance || [];
+      try {
+        const employeesRes = await employeeAPI.getAll({ limit: 100 });
+        employees = employeesRes.data.employees || [];
+      } catch (error) {
+        console.error('Error loading employees:', error);
+      }
+
+      try {
+        const leavesRes = await leaveAPI.getMyLeaves();
+        leaves = leavesRes.data.leaves || [];
+      } catch (error) {
+        console.error('Error loading leaves:', error);
+      }
+
+      try {
+        const attendanceRes = await attendanceAPI.getAttendance({});
+        attendance = attendanceRes.data.attendance || [];
+      } catch (error) {
+        console.error('Error loading attendance:', error);
+      }
 
       setStats({
         totalEmployees: employees.length,
