@@ -183,12 +183,16 @@ export default function Layout() {
         sx={{
           flexGrow: 1,
           p: 3,
-          width: {
-            sm: `calc(100% - ${drawerExpanded ? drawerWidthExpanded : drawerWidthCollapsed}px)`
+          ml: {
+            xs: 0,
+            sm: `${drawerExpanded ? drawerWidthExpanded : drawerWidthCollapsed}px`
           },
-          ml: { sm: 0 },
           mt: 8,
-          transition: 'width 0.3s'
+          transition: 'margin-left 0.3s ease-in-out',
+          width: {
+            xs: '100%',
+            sm: `calc(100% - ${drawerExpanded ? drawerWidthExpanded : drawerWidthCollapsed}px)`
+          }
         }}
       >
         <Outlet />

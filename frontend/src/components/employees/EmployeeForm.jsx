@@ -8,10 +8,22 @@ import {
   Grid,
   MenuItem,
   Divider,
-  CircularProgress
+  CircularProgress,
+  Tabs,
+  Tab,
+  Card,
+  CardContent
 } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 import { employeeAPI, organizationAPI } from '../../services/api';
+
+function TabPanel({ children, value, index }) {
+  return (
+    <div hidden={value !== index} style={{ paddingTop: 24 }}>
+      {value === index && children}
+    </div>
+  );
+}
 
 export default function EmployeeForm() {
   const { id } = useParams();
@@ -19,6 +31,7 @@ export default function EmployeeForm() {
   const isEdit = Boolean(id);
 
   const [loading, setLoading] = useState(false);
+  const [currentTab, setCurrentTab] = useState(0);
   const [departments, setDepartments] = useState([]);
   const [designations, setDesignations] = useState([]);
   const [formData, setFormData] = useState({
@@ -173,17 +186,31 @@ export default function EmployeeForm() {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>
-        {isEdit ? 'Edit Employee' : 'Add New Employee'}
-      </Typography>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Typography variant="h4">
+          {isEdit ? 'Edit Employee' : 'Add New Employee'}
+        </Typography>
+        <Button variant="outlined" onClick={() => navigate('/employees')}>
+          Back to List
+        </Button>
+      </Box>
 
-      <Paper sx={{ p: 3, mt: 3 }}>
-        <form onSubmit={handleSubmit}>
-          {/* Personal Information */}
-          <Typography variant="h6" gutterBottom>
-            Personal Information
-          </Typography>
-          <Divider sx={{ mb: 2 }} />
+      <Card elevation={3}>
+        <CardContent>
+          <Tabs
+            value={currentTab}
+            onChange={(e, newValue) => setCurrentTab(newValue)}
+            sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
+          >
+            <Tab label="Personal Info" />
+            <Tab label="Contact Info" />
+            <Tab label="Employment" />
+            <Tab label="Bank Details" />
+          </Tabs>
+
+          <form onSubmit={handleSubmit}>
+            {/* Tab 1: Personal Information */}
+            <TabPanel value={currentTab} index={0}>
 
           <Grid container spacing={2}>
             <Grid item xs={12} md={4}>
@@ -261,11 +288,10 @@ export default function EmployeeForm() {
             </Grid>
           </Grid>
 
-          {/* Contact Information */}
-          <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
-            Contact Information
-          </Typography>
-          <Divider sx={{ mb: 2 }} />
+            </TabPanel>
+
+            {/* Tab 2: Contact Information */}
+            <TabPanel value={currentTab} index={1}>
 
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
@@ -367,11 +393,10 @@ export default function EmployeeForm() {
             </Grid>
           </Grid>
 
-          {/* Employment Information */}
-          <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
-            Employment Information
-          </Typography>
-          <Divider sx={{ mb: 2 }} />
+            </TabPanel>
+
+            {/* Tab 3: Employment Information */}
+            <TabPanel value={currentTab} index={2}>
 
           <Grid container spacing={2}>
             <Grid item xs={12} md={4}>
@@ -463,11 +488,10 @@ export default function EmployeeForm() {
             </Grid>
           </Grid>
 
-          {/* Bank Details */}
-          <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
-            Bank Details
-          </Typography>
-          <Divider sx={{ mb: 2 }} />
+            </TabPanel>
+
+            {/* Tab 4: Bank Details */}
+            <TabPanel value={currentTab} index={3}>
 
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
@@ -513,26 +537,49 @@ export default function EmployeeForm() {
             </Grid>
           </Grid>
 
-          {/* Action Buttons */}
-          <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
-            <Button
-              type="submit"
-              variant="contained"
-              size="large"
-              disabled={loading}
-            >
-              {loading ? 'Saving...' : (isEdit ? 'Update Employee' : 'Create Employee')}
-            </Button>
-            <Button
-              variant="outlined"
-              size="large"
-              onClick={() => navigate('/employees')}
-            >
-              Cancel
-            </Button>
-          </Box>
-        </form>
-      </Paper>
+            </TabPanel>
+
+            {/* Action Buttons */}
+            <Divider sx={{ my: 3 }} />
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'space-between' }}>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                {currentTab > 0 && (
+                  <Button
+                    variant="outlined"
+                    onClick={() => setCurrentTab(currentTab - 1)}
+                  >
+                    Previous
+                  </Button>
+                )}
+                {currentTab < 3 && (
+                  <Button
+                    variant="contained"
+                    onClick={() => setCurrentTab(currentTab + 1)}
+                  >
+                    Next
+                  </Button>
+                )}
+              </Box>
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <Button
+                  variant="outlined"
+                  onClick={() => navigate('/employees')}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="contained"
+                  color="primary"
+                  disabled={loading}
+                >
+                  {loading ? 'Saving...' : (isEdit ? 'Update Employee' : 'Save Employee')}
+                </Button>
+              </Box>
+            </Box>
+          </form>
+        </CardContent>
+      </Card>
     </Box>
   );
 }
