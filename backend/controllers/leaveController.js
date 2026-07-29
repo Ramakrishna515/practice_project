@@ -151,8 +151,8 @@ exports.applyLeave = async (req, res) => {
         employee,
         leaveType,
         year: currentYear,
-        totalLeaves: leaveTypeDoc.maxDaysPerYear,
-        usedLeaves: 0,
+        totalDays: leaveTypeDoc.maxDaysPerYear,
+        usedDays: 0,
         remainingDays: leaveTypeDoc.maxDaysPerYear
       });
       await balance.save();
@@ -179,7 +179,7 @@ exports.applyLeave = async (req, res) => {
     await leaveApplication.save();
 
     // Update balance (reduce remaining days)
-    balance.usedLeaves += numberOfDays;
+    balance.usedDays += numberOfDays;
     balance.remainingDays -= numberOfDays;
     await balance.save();
 

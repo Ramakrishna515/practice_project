@@ -31,8 +31,8 @@ export default function LeaveBalance() {
   };
 
   const LeaveCard = ({ balance }) => {
-    const total = balance.totalLeaves || 0;
-    const used = balance.usedLeaves || 0;
+    const total = balance.totalDays || 0;
+    const used = balance.usedDays || 0;
     const available = total - used;
     const percentage = total > 0 ? (used / total) * 100 : 0;
 
