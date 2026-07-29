@@ -23,20 +23,17 @@ async function seedDatabase() {
       {
         departmentName: 'Engineering',
         departmentCode: 'ENG',
-        description: 'Software development and engineering',
-        headOfDepartment: 'John Doe'
+        description: 'Software development and engineering'
       },
       {
         departmentName: 'Human Resources',
         departmentCode: 'HR',
-        description: 'HR and recruitment',
-        headOfDepartment: 'Jane Smith'
+        description: 'HR and recruitment'
       },
       {
         departmentName: 'Sales',
         departmentCode: 'SALES',
-        description: 'Sales and business development',
-        headOfDepartment: 'Bob Wilson'
+        description: 'Sales and business development'
       }
     ]);
     console.log(`✅ Created ${departments.length} departments`);
@@ -47,29 +44,29 @@ async function seedDatabase() {
       {
         designationName: 'Software Engineer',
         designationCode: 'SE',
+        level: 1,
         department: departments[0]._id,
-        level: 'Junior',
         description: 'Entry level software engineer'
       },
       {
         designationName: 'Senior Software Engineer',
         designationCode: 'SSE',
+        level: 2,
         department: departments[0]._id,
-        level: 'Senior',
         description: 'Senior software engineer'
       },
       {
         designationName: 'HR Manager',
         designationCode: 'HRM',
+        level: 3,
         department: departments[1]._id,
-        level: 'Manager',
         description: 'Human resources manager'
       },
       {
         designationName: 'Sales Executive',
         designationCode: 'SAL',
+        level: 1,
         department: departments[2]._id,
-        level: 'Executive',
         description: 'Sales executive'
       }
     ]);
@@ -79,28 +76,31 @@ async function seedDatabase() {
     console.log('🏖️  Creating leave types...');
     const leaveTypes = await LeaveType.insertMany([
       {
-        leaveName: 'Casual Leave',
+        leaveTypeName: 'Casual Leave',
         leaveCode: 'CL',
-        totalDays: 12,
+        maxDaysPerYear: 12,
         description: 'For personal reasons',
         isPaid: true,
-        carryForward: true
+        carryForward: true,
+        maxCarryForwardDays: 5
       },
       {
-        leaveName: 'Sick Leave',
+        leaveTypeName: 'Sick Leave',
         leaveCode: 'SL',
-        totalDays: 10,
+        maxDaysPerYear: 10,
         description: 'For medical reasons',
         isPaid: true,
-        carryForward: false
+        carryForward: false,
+        maxCarryForwardDays: 0
       },
       {
-        leaveName: 'Privilege Leave',
+        leaveTypeName: 'Privilege Leave',
         leaveCode: 'PL',
-        totalDays: 20,
+        maxDaysPerYear: 20,
         description: 'Earned leave',
         isPaid: true,
-        carryForward: true
+        carryForward: true,
+        maxCarryForwardDays: 10
       }
     ]);
     console.log(`✅ Created ${leaveTypes.length} leave types`);
