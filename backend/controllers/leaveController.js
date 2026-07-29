@@ -117,26 +117,52 @@ exports.getLeaveById = async (req, res) => {
 exports.applyLeave = async (req, res) => {
   try {
     const {
-      employee,
       leaveType,
       startDate,
       endDate,
-      numberOfDays,
-      isHalfDay,
-      halfDayPeriod,
       reason
     } = req.body;
 
-    // Check leave balance
+    // Use authenticated user's ID
+    const employee = req.user._id;
+
+    // Calculate number of days
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const numberOfDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+
+    // Get leave type details
+    const leaveTypeDoc = await LeaveType.findById(leaveType);
+    if (!leaveTypeDoc) {
+      return res.status(404).json({ message: 'Leave type not found' });
+    }
+
+    // Check or create leave balance for current year
     const currentYear = new Date().getFullYear();
-    const balance = await LeaveBalance.findOne({
+    let balance = await LeaveBalance.findOne({
       employee,
       year: currentYear,
       leaveType
     });
 
-    if (!balance || balance.remainingDays < numberOfDays) {
-      return res.status(400).json({ message: 'Insufficient leave balance' });
+    // Auto-create balance if doesn't exist
+    if (!balance) {
+      balance = new LeaveBalance({
+        employee,
+        leaveType,
+        year: currentYear,
+        totalLeaves: leaveTypeDoc.maxDaysPerYear,
+        usedLeaves: 0,
+        remainingDays: leaveTypeDoc.maxDaysPerYear
+      });
+      await balance.save();
+    }
+
+    // Check if sufficient balance
+    if (balance.remainingDays < numberOfDays) {
+      return res.status(400).json({
+        message: `Insufficient leave balance. Available: ${balance.remainingDays} days, Requested: ${numberOfDays} days`
+      });
     }
 
     const leaveApplication = new LeaveApplication({
@@ -145,13 +171,17 @@ exports.applyLeave = async (req, res) => {
       startDate,
       endDate,
       numberOfDays,
-      isHalfDay,
-      halfDayPeriod,
       reason,
-      status: 'Pending'
+      status: 'Pending',
+      appliedDate: new Date()
     });
 
     await leaveApplication.save();
+
+    // Update balance (reduce remaining days)
+    balance.usedLeaves += numberOfDays;
+    balance.remainingDays -= numberOfDays;
+    await balance.save();
 
     res.status(201).json({
       message: 'Leave application submitted successfully',
@@ -307,6 +337,53 @@ exports.updateLeaveBalance = async (req, res) => {
       message: 'Leave balance updated successfully',
       balance
     });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get current user's leave balance
+exports.getMyLeaveBalance = async (req, res) => {
+  try {
+    const { year = new Date().getFullYear() } = req.query;
+    const employee = req.user._id;
+
+    const balances = await LeaveBalance.find({
+      employee,
+      year
+    }).populate('leaveType', 'leaveTypeName leaveCode maxDaysPerYear isPaid');
+
+    res.json({ balances });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get current user's leaves
+exports.getMyLeaves = async (req, res) => {
+  try {
+    const employee = req.user._id;
+
+    const leaves = await LeaveApplication.find({ employee })
+      .populate('leaveType', 'leaveTypeName leaveCode')
+      .populate('approver', 'personalInfo employeeId')
+      .sort({ appliedDate: -1 });
+
+    res.json({ leaves });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get pending leaves for approval
+exports.getPendingLeaves = async (req, res) => {
+  try {
+    const leaves = await LeaveApplication.find({ status: 'Pending' })
+      .populate('employee', 'personalInfo employeeId')
+      .populate('leaveType', 'leaveTypeName leaveCode')
+      .sort({ appliedDate: -1 });
+
+    res.json({ leaves });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

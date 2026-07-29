@@ -10,6 +10,8 @@ router.put('/types/:id', auth, checkRole('Admin', 'HR'), leaveController.updateL
 router.delete('/types/:id', auth, checkRole('Admin', 'HR'), leaveController.deleteLeaveType);
 
 // Leave Application routes
+router.get('/my-leaves', auth, leaveController.getMyLeaves);
+router.get('/pending', auth, checkRole('Admin', 'HR', 'Manager'), leaveController.getPendingLeaves);
 router.get('/', auth, leaveController.getAllLeaves);
 router.get('/:id', auth, leaveController.getLeaveById);
 router.post('/', auth, leaveController.applyLeave);
@@ -19,6 +21,7 @@ router.put('/:id/approve', auth, checkRole('Admin', 'HR', 'Manager'), leaveContr
 router.put('/:id/reject', auth, checkRole('Admin', 'HR', 'Manager'), leaveController.rejectLeave);
 
 // Leave Balance routes
+router.get('/balance', auth, leaveController.getMyLeaveBalance);
 router.get('/balance/:empId', auth, leaveController.getLeaveBalance);
 router.put('/balance/:empId', auth, checkRole('Admin', 'HR'), leaveController.updateLeaveBalance);
 
