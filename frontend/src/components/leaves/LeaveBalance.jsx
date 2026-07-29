@@ -42,7 +42,7 @@ export default function LeaveBalance() {
           <Box display="flex" alignItems="center" gap={2} mb={2}>
             <EventAvailable color="primary" />
             <Typography variant="h6">
-              {balance.leaveType?.leaveName || 'Leave Type'}
+              {balance.leaveType?.leaveTypeName || 'Leave Type'}
             </Typography>
           </Box>
           <Divider sx={{ my: 2 }} />

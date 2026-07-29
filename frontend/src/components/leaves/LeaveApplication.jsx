@@ -75,7 +75,7 @@ export default function LeaveApplication() {
                   <MenuItem value="">Select Leave Type</MenuItem>
                   {leaveTypes.map((type) => (
                     <MenuItem key={type._id} value={type._id}>
-                      {type.leaveName} ({type.totalDays} days available)
+                      {type.leaveTypeName} ({type.maxDaysPerYear} days available)
                     </MenuItem>
                   ))}
                 </TextField>

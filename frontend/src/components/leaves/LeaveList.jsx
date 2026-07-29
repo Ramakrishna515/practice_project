@@ -84,7 +84,7 @@ export default function LeaveList() {
             ) : (
               leaves.map((leave) => (
                 <TableRow key={leave._id}>
-                  <TableCell>{leave.leaveType?.leaveName || 'N/A'}</TableCell>
+                  <TableCell>{leave.leaveType?.leaveTypeName || 'N/A'}</TableCell>
                   <TableCell>{new Date(leave.startDate).toLocaleDateString()}</TableCell>
                   <TableCell>{new Date(leave.endDate).toLocaleDateString()}</TableCell>
                   <TableCell>{leave.totalDays}</TableCell>
