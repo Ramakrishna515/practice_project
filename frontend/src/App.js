@@ -33,6 +33,7 @@ import LeaveList from './components/leaves/LeaveList';
 import LeaveApplication from './components/leaves/LeaveApplication';
 import LeaveApproval from './components/leaves/LeaveApproval';
 import LeaveBalance from './components/leaves/LeaveBalance';
+import LeaveTypeManagement from './components/leaves/LeaveTypeManagement';
 
 // Payroll components
 import SalaryStructureList from './components/payroll/SalaryStructureList';
@@ -114,6 +115,7 @@ function AppRoutes() {
           <Route path="apply" element={<LeaveApplication />} />
           <Route path="approvals" element={<LeaveApproval />} />
           <Route path="balance" element={<LeaveBalance />} />
+          <Route path="types" element={<LeaveTypeManagement />} />
         </Route>
 
         {/* Payroll Routes */}

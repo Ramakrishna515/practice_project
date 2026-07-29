@@ -117,13 +117,16 @@ export const leaveAPI = {
   // Leave Applications
   getAll: (params) => api.get('/leaves', { params }),
   getById: (id) => api.get(`/leaves/${id}`),
-  apply: (data) => api.post('/leaves', data),
+  applyLeave: (data) => api.post('/leaves', data),
+  getMyLeaves: () => api.get('/leaves/my-leaves'),
+  getPendingLeaves: () => api.get('/leaves/pending'),
   update: (id, data) => api.put(`/leaves/${id}`, data),
   cancel: (id) => api.delete(`/leaves/${id}`),
-  approve: (id) => api.put(`/leaves/${id}/approve`),
-  reject: (id, data) => api.put(`/leaves/${id}/reject`, data),
+  approveLeave: (id, data) => api.put(`/leaves/${id}/approve`, data),
+  rejectLeave: (id, data) => api.put(`/leaves/${id}/reject`, data),
 
   // Leave Balance
+  getLeaveBalance: () => api.get('/leaves/balance'),
   getBalance: (empId, params) => api.get(`/leaves/balance/${empId}`, { params }),
   updateBalance: (empId, data) => api.put(`/leaves/balance/${empId}`, data)
 };
@@ -141,6 +144,7 @@ export const payrollAPI = {
   getPayslips: (params) => api.get('/payroll/payslips', { params }),
   getPayslipById: (id) => api.get(`/payroll/payslips/${id}`),
   getEmployeePayslips: (empId) => api.get(`/payroll/payslips/employee/${empId}`),
+  generatePayslip: (data) => api.post('/payroll/payslips/generate', data),
   generatePayslips: (data) => api.post('/payroll/payslips/generate', data),
   updatePayslip: (id, data) => api.put(`/payroll/payslips/${id}`, data),
   processPayslips: (data) => api.post('/payroll/payslips/process', data)
