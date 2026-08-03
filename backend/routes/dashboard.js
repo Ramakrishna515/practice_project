@@ -10,5 +10,4 @@ router.get('/employees', auth, dashboardController.getEmployeesByDepartment);
 router.get('/payroll', auth, dashboardController.getPayrollSummary);
 router.get('/recent', auth, dashboardController.getRecentActivities);
 
-
 module.exports = router;

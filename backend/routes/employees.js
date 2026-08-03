@@ -12,5 +12,4 @@ router.delete('/:id', auth, checkRole('Admin', 'HR'), employeeController.deleteE
 router.post('/:id/upload', auth, employeeController.uploadDocument);
 router.get('/:id/documents', auth, employeeController.getEmployeeDocuments);
 
-
 module.exports = router;
