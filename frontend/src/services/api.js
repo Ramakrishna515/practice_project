@@ -57,7 +57,9 @@ export const employeeAPI = {
   delete: (id) => api.delete(`/employees/${id}`),
   search: (query) => api.get('/employees/search', { params: { query } }),
   uploadDocument: (id, data) => api.post(`/employees/${id}/upload`, data),
-  getDocuments: (id) => api.get(`/employees/${id}/documents`)
+  getDocuments: (id) => api.get(`/employees/${id}/documents`),
+  linkUser: (id, data) => api.post(`/employees/${id}/link-user`, data),
+  unlinkUser: (id) => api.delete(`/employees/${id}/link-user`)
 };
 
 // Organization API
@@ -93,6 +95,7 @@ export const onboardingAPI = {
 export const attendanceAPI = {
   getAll: (params) => api.get('/attendance', { params }),
   getById: (id) => api.get(`/attendance/${id}`),
+  getToday: () => api.get('/attendance/today'),
   checkIn: (data) => api.post('/attendance/checkin', data),
   checkOut: (data) => api.post('/attendance/checkout', data),
   update: (id, data) => api.put(`/attendance/${id}`, data),

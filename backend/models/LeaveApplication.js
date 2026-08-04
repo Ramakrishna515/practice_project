@@ -44,6 +44,10 @@ const leaveApplicationSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Employee'
   },
+  reportingManager: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Employee'
+  },
   approvedDate: Date,
   rejectionReason: String,
   appliedDate: {

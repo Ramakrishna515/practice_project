@@ -176,6 +176,36 @@ exports.getEmployeeAttendance = async (req, res) => {
   }
 };
 
+// Today's live attendance (for the real-time dashboard)
+exports.getTodayAttendance = async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const attendanceRecords = await Attendance.find({
+      date: { $gte: today, $lt: tomorrow }
+    })
+      .populate('employee', 'personalInfo employeeId employmentInfo')
+      .populate('shift', 'shiftName startTime endTime breakDuration')
+      .sort({ checkIn: 1 });
+
+    const now = new Date();
+    const enriched = attendanceRecords.map(a => {
+      const record = a.toObject();
+      if (record.checkIn && !record.checkOut) {
+        record.currentHours = Math.max(0, (now - new Date(record.checkIn)) / (1000 * 60 * 60));
+      }
+      return record;
+    });
+
+    res.json({ attendanceRecords: enriched });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 exports.getAttendanceReport = async (req, res) => {
   try {
     const { month, year } = req.query;

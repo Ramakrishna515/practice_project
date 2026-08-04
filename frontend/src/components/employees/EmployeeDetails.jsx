@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
-  Paper,
   Grid,
   Button,
   Divider,
@@ -19,10 +18,7 @@ import {
   ArrowBack,
   Email,
   Phone,
-  Business,
-  Work,
-  CalendarToday,
-  AccountBalance
+  AccountBox
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import { employeeAPI } from '../../services/api';
@@ -148,6 +144,12 @@ export default function EmployeeDetails() {
                 <Chip
                   label={employmentInfo.employmentStatus}
                   color={employmentInfo.employmentStatus === 'Active' ? 'success' : 'default'}
+                />
+                <Chip
+                  icon={<AccountBox />}
+                  label={employee.linkedUser ? `Account: ${employee.linkedUser.username}` : 'No Login Account'}
+                  color={employee.linkedUser ? 'info' : 'default'}
+                  variant="outlined"
                 />
               </Box>
             </Box>
@@ -358,6 +360,16 @@ export default function EmployeeDetails() {
                 </Typography>
                 <Typography variant="body1" gutterBottom>
                   {employmentInfo.designation?.designationName || 'N/A'}
+                </Typography>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Reporting Manager
+                </Typography>
+                <Typography variant="body1" gutterBottom>
+                  {employmentInfo.reportingManager
+                    ? `${employmentInfo.reportingManager.personalInfo?.firstName} ${employmentInfo.reportingManager.personalInfo?.lastName}`
+                    : 'Not assigned'}
                 </Typography>
               </Grid>
               <Grid item xs={12} md={6}>

@@ -40,8 +40,18 @@ exports.getAllEmployees = async (req, res) => {
 
     const count = await Employee.countDocuments(query);
 
+    const ids = employees.map(e => e._id);
+    const users = await User.find({ employee: { $in: ids } }).select('username email role isActive');
+    const userMap = {};
+    users.forEach(u => { userMap[String(u.employee)] = u; });
+    const enriched = employees.map(e => {
+      const obj = e.toObject();
+      obj.linkedUser = userMap[String(e._id)] || null;
+      return obj;
+    });
+
     res.json({
-      employees,
+      employees: enriched,
       totalPages: Math.ceil(count / limit),
       currentPage: page,
       total: count
@@ -63,7 +73,11 @@ exports.getEmployeeById = async (req, res) => {
       return res.status(404).json({ message: 'Employee not found' });
     }
 
-    res.json({ employee });
+    const user = await User.findOne({ employee: employee._id }).select('username email role isActive');
+    const enriched = employee.toObject();
+    enriched.linkedUser = user || null;
+
+    res.json({ employee: enriched });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -72,19 +86,43 @@ exports.getEmployeeById = async (req, res) => {
 // Create new employee
 exports.createEmployee = async (req, res) => {
   try {
+    const { userAccount, ...employeeData } = req.body;
+
     // Auto-generate employeeId if not provided
-    if (!req.body.employeeId) {
+    if (!employeeData.employeeId) {
       // Get the count of existing employees
       const count = await Employee.countDocuments();
-      req.body.employeeId = `BKN${count + 1}`;
+      employeeData.employeeId = `BKN${count + 1}`;
     }
 
     const employee = new Employee({
-      ...req.body,
+      ...employeeData,
       createdBy: req.user._id
     });
 
     await employee.save();
+
+    // Optionally create and link a login account for the employee
+    if (userAccount && userAccount.createAccount) {
+      const { username, email, password, role } = userAccount;
+      if (!username || !email || !password) {
+        return res.status(400).json({ message: 'Username, email and password are required to create a login account' });
+      }
+
+      const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+      if (existingUser) {
+        return res.status(400).json({ message: 'A user with this username or email already exists' });
+      }
+
+      const user = new User({
+        username,
+        email,
+        password,
+        role: role || 'Employee',
+        employee: employee._id
+      });
+      await user.save();
+    }
 
     res.status(201).json({
       message: 'Employee created successfully',
@@ -198,6 +236,81 @@ exports.searchEmployees = async (req, res) => {
       .limit(10);
 
     res.json({ employees });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Link a user account to an employee (existing user or create new one)
+exports.linkUser = async (req, res) => {
+  try {
+    const employee = await Employee.findById(req.params.id);
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    let user;
+    if (req.body.userId) {
+      user = await User.findById(req.body.userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+    } else {
+      const { username, email, password, role } = req.body;
+      if (!username || !email || !password) {
+        return res.status(400).json({ message: 'Username, email and password are required to create an account' });
+      }
+
+      // If a user with this username/email already exists, link that account instead of erroring
+      const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+      if (existingUser) {
+        user = existingUser;
+      } else {
+        user = new User({
+          username,
+          email,
+          password,
+          role: role || 'Employee'
+        });
+        await user.save();
+      }
+    }
+
+    if (user.employee && String(user.employee) !== String(employee._id)) {
+      return res.status(400).json({ message: 'This user account is already linked to another employee' });
+    }
+
+    user.employee = employee._id;
+    await user.save();
+
+    res.json({
+      message: 'User account linked to employee successfully',
+      user: {
+        _id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+// Unlink the user account from an employee
+exports.unlinkUser = async (req, res) => {
+  try {
+    const employee = await Employee.findById(req.params.id);
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    await User.updateMany(
+      { employee: employee._id },
+      { $set: { employee: null } }
+    );
+
+    res.json({ message: 'User account unlinked from employee successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

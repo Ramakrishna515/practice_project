@@ -24,9 +24,12 @@ import OnboardingList from './components/onboarding/OnboardingList';
 import OnboardingDetails from './components/onboarding/OnboardingDetails';
 
 // Attendance components
+import AttendanceDashboard from './components/attendance/AttendanceDashboard';
 import AttendanceList from './components/attendance/AttendanceList';
 import AttendanceCalendar from './components/attendance/AttendanceCalendar';
+import AttendanceReport from './components/attendance/AttendanceReport';
 import CheckInOut from './components/attendance/CheckInOut';
+import ShiftList from './components/attendance/ShiftList';
 
 // Leave components
 import LeaveList from './components/leaves/LeaveList';
@@ -104,9 +107,12 @@ function AppRoutes() {
 
         {/* Attendance Routes */}
         <Route path="attendance">
-          <Route index element={<AttendanceList />} />
+          <Route index element={<AttendanceDashboard />} />
+          <Route path="list" element={<AttendanceList />} />
           <Route path="calendar" element={<AttendanceCalendar />} />
+          <Route path="report" element={<AttendanceReport />} />
           <Route path="checkin" element={<CheckInOut />} />
+          <Route path="shifts" element={<ShiftList />} />
         </Route>
 
         {/* Leave Routes */}

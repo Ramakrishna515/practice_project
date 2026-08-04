@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Paper,
   Typography,
   TextField,
   Button,
@@ -14,10 +13,13 @@ import {
   Card,
   CardContent,
   Snackbar,
-  Alert
+  Alert,
+  Checkbox,
+  FormControlLabel
 } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 import { employeeAPI, organizationAPI } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 function TabPanel({ children, value, index }) {
   return (
@@ -30,17 +32,29 @@ function TabPanel({ children, value, index }) {
 export default function EmployeeForm() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const isEdit = Boolean(id);
+  const isAdminHR = ['Admin', 'HR'].includes(user?.role);
 
   const [loading, setLoading] = useState(false);
   const [currentTab, setCurrentTab] = useState(0);
   const [departments, setDepartments] = useState([]);
   const [designations, setDesignations] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
     severity: 'success' // 'success' | 'error' | 'warning' | 'info'
   });
+  const [createAccount, setCreateAccount] = useState(false);
+  const [accountData, setAccountData] = useState({
+    username: '',
+    email: '',
+    password: '',
+    role: 'Employee'
+  });
+  const [linkedUser, setLinkedUser] = useState(null);
+  const [linking, setLinking] = useState(false);
   const [formData, setFormData] = useState({
     // Personal Info
     personalInfo: {
@@ -76,6 +90,7 @@ export default function EmployeeForm() {
       probationPeriod: 3,
       department: '',
       designation: '',
+      reportingManager: '',
       workLocation: '',
       employmentStatus: 'Active'
     },
@@ -92,6 +107,9 @@ export default function EmployeeForm() {
   useEffect(() => {
     loadDepartments();
     loadDesignations();
+    if (isAdminHR) {
+      loadEmployees();
+    }
     if (isEdit) {
       loadEmployee();
     }
@@ -112,6 +130,15 @@ export default function EmployeeForm() {
       setDesignations(response.data.designations);
     } catch (error) {
       console.error('Error loading designations:', error);
+    }
+  };
+
+  const loadEmployees = async () => {
+    try {
+      const response = await employeeAPI.getAll({ limit: 100 });
+      setEmployees(response.data.employees || []);
+    } catch (error) {
+      console.error('Error loading employees:', error);
     }
   };
 
@@ -136,6 +163,9 @@ export default function EmployeeForm() {
       if (employee.employmentInfo?.designation?._id) {
         employee.employmentInfo.designation = employee.employmentInfo.designation._id;
       }
+      if (employee.employmentInfo?.reportingManager?._id) {
+        employee.employmentInfo.reportingManager = employee.employmentInfo.reportingManager._id;
+      }
 
       // Ensure all nested objects exist
       const formattedEmployee = {
@@ -150,6 +180,7 @@ export default function EmployeeForm() {
       };
 
       setFormData(formattedEmployee);
+      setLinkedUser(employee.linkedUser || null);
     } catch (error) {
       console.error('Error loading employee:', error);
       showSnackbar('Failed to load employee data', 'error');
@@ -225,6 +256,24 @@ export default function EmployeeForm() {
         // No required fields
         break;
 
+      case 4: // Login Account
+        if (createAccount) {
+          if (!accountData.username?.trim()) {
+            errors.push('Username is required');
+          }
+          if (!accountData.email?.trim()) {
+            errors.push('Account email is required');
+          } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(accountData.email)) {
+            errors.push('Valid account email is required');
+          }
+          if (!accountData.password?.trim()) {
+            errors.push('Password is required');
+          } else if (accountData.password.length < 6) {
+            errors.push('Password must be at least 6 characters');
+          }
+        }
+        break;
+
       default:
         break;
     }
@@ -268,7 +317,17 @@ export default function EmployeeForm() {
         showSnackbar('Employee updated successfully!', 'success');
         setTimeout(() => navigate('/employees'), 1500);
       } else {
-        await employeeAPI.create(cleanedData);
+        const payload = { ...cleanedData };
+        if (createAccount) {
+          payload.userAccount = {
+            createAccount: true,
+            username: accountData.username,
+            email: accountData.email,
+            password: accountData.password,
+            role: accountData.role
+          };
+        }
+        await employeeAPI.create(payload);
         showSnackbar('Employee created successfully!', 'success');
         setTimeout(() => navigate('/employees'), 1500);
       }
@@ -278,6 +337,56 @@ export default function EmployeeForm() {
       showSnackbar(errorMessage, 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAccountChange = (field, value) => {
+    setAccountData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleLinkAccount = async () => {
+    const errors = [];
+    if (!accountData.username?.trim()) errors.push('Username is required');
+    if (!accountData.email?.trim()) {
+      errors.push('Account email is required');
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(accountData.email)) {
+      errors.push('Valid account email is required');
+    }
+    if (!accountData.password?.trim()) {
+      errors.push('Password is required');
+    } else if (accountData.password.length < 6) {
+      errors.push('Password must be at least 6 characters');
+    }
+    if (errors.length > 0) {
+      showSnackbar(errors.join(', '), 'error');
+      return;
+    }
+
+    setLinking(true);
+    try {
+      await employeeAPI.linkUser(id, accountData);
+      showSnackbar('Login account linked successfully!', 'success');
+      loadEmployee();
+    } catch (error) {
+      console.error('Error linking account:', error);
+      showSnackbar(error.response?.data?.message || 'Failed to link account', 'error');
+    } finally {
+      setLinking(false);
+    }
+  };
+
+  const handleUnlinkAccount = async () => {
+    setLinking(true);
+    try {
+      await employeeAPI.unlinkUser(id);
+      showSnackbar('Login account unlinked successfully!', 'success');
+      setLinkedUser(null);
+      loadEmployee();
+    } catch (error) {
+      console.error('Error unlinking account:', error);
+      showSnackbar(error.response?.data?.message || 'Failed to unlink account', 'error');
+    } finally {
+      setLinking(false);
     }
   };
 
@@ -311,6 +420,7 @@ export default function EmployeeForm() {
             <Tab label="Contact Info" />
             <Tab label="Employment" />
             <Tab label="Bank Details" />
+            <Tab label="Login Account" />
           </Tabs>
 
           <form onSubmit={handleSubmit}>
@@ -572,6 +682,26 @@ export default function EmployeeForm() {
                 ))}
               </TextField>
             </Grid>
+            {isAdminHR && (
+              <Grid item xs={12} md={4}>
+                <TextField
+                  fullWidth
+                  select
+                  label="Reporting Manager"
+                  value={formData.employmentInfo.reportingManager}
+                  onChange={(e) => handleChange('employmentInfo', 'reportingManager', e.target.value)}
+                >
+                  <MenuItem value="">No Manager</MenuItem>
+                  {employees
+                    .filter((emp) => emp._id !== id)
+                    .map((emp) => (
+                      <MenuItem key={emp._id} value={emp._id}>
+                        {emp.employeeId} - {emp.personalInfo?.firstName} {emp.personalInfo?.lastName}
+                      </MenuItem>
+                    ))}
+                </TextField>
+              </Grid>
+            )}
             <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
@@ -648,6 +778,183 @@ export default function EmployeeForm() {
 
             </TabPanel>
 
+            {/* Tab 5: Login Account */}
+            <TabPanel value={currentTab} index={4}>
+
+          {!isEdit ? (
+            <>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={createAccount}
+                    onChange={(e) => setCreateAccount(e.target.checked)}
+                  />
+                }
+                label="Create a login account for this employee"
+              />
+
+              {createAccount && (
+                <Grid container spacing={2} sx={{ mt: 1 }}>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      required
+                      fullWidth
+                      label="Username"
+                      value={accountData.username}
+                      onChange={(e) => handleAccountChange('username', e.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      required
+                      fullWidth
+                      type="email"
+                      label="Login Email"
+                      value={accountData.email}
+                      onChange={(e) => handleAccountChange('email', e.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      required
+                      fullWidth
+                      type="password"
+                      label="Password (min 6 characters)"
+                      value={accountData.password}
+                      onChange={(e) => handleAccountChange('password', e.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      select
+                      label="Role"
+                      value={accountData.role}
+                      onChange={(e) => handleAccountChange('role', e.target.value)}
+                    >
+                      <MenuItem value="Employee">Employee</MenuItem>
+                      <MenuItem value="Manager">Manager</MenuItem>
+                      <MenuItem value="HR">HR</MenuItem>
+                      <MenuItem value="Admin">Admin</MenuItem>
+                    </TextField>
+                  </Grid>
+                </Grid>
+              )}
+            </>
+          ) : linkedUser ? (
+            <>
+              <Alert severity="success" sx={{ mb: 2 }}>
+                This employee has a linked login account.
+              </Alert>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Username"
+                    value={linkedUser.username}
+                    InputProps={{ readOnly: true }}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Email"
+                    value={linkedUser.email}
+                    InputProps={{ readOnly: true }}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Role"
+                    value={linkedUser.role}
+                    InputProps={{ readOnly: true }}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Status"
+                    value={linkedUser.isActive ? 'Active' : 'Inactive'}
+                    InputProps={{ readOnly: true }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    onClick={handleUnlinkAccount}
+                    disabled={linking}
+                  >
+                    {linking ? 'Processing...' : 'Unlink Account'}
+                  </Button>
+                </Grid>
+              </Grid>
+            </>
+          ) : (
+            <>
+              <Alert severity="info" sx={{ mb: 2 }}>
+                No login account linked. Create one now to let this employee log in and use attendance/leave modules.
+              </Alert>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    required
+                    fullWidth
+                    label="Username"
+                    value={accountData.username}
+                    onChange={(e) => handleAccountChange('username', e.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    required
+                    fullWidth
+                    type="email"
+                    label="Login Email"
+                    value={accountData.email}
+                    onChange={(e) => handleAccountChange('email', e.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    required
+                    fullWidth
+                    type="password"
+                    label="Password (min 6 characters)"
+                    value={accountData.password}
+                    onChange={(e) => handleAccountChange('password', e.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    select
+                    label="Role"
+                    value={accountData.role}
+                    onChange={(e) => handleAccountChange('role', e.target.value)}
+                  >
+                    <MenuItem value="Employee">Employee</MenuItem>
+                    <MenuItem value="Manager">Manager</MenuItem>
+                    <MenuItem value="HR">HR</MenuItem>
+                    <MenuItem value="Admin">Admin</MenuItem>
+                  </TextField>
+                </Grid>
+                <Grid item xs={12}>
+                  <Button
+                    variant="contained"
+                    onClick={handleLinkAccount}
+                    disabled={linking}
+                  >
+                    {linking ? 'Linking...' : 'Link Account'}
+                  </Button>
+                </Grid>
+              </Grid>
+            </>
+          )}
+
+            </TabPanel>
+
             {/* Action Buttons */}
             <Divider sx={{ my: 3 }} />
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'space-between' }}>
@@ -660,7 +967,7 @@ export default function EmployeeForm() {
                     Previous
                   </Button>
                 )}
-                {currentTab < 3 && (
+                {currentTab < 4 && (
                   <Button
                     variant="contained"
                     onClick={handleNextTab}

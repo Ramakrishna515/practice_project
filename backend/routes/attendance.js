@@ -5,6 +5,7 @@ const { auth, checkRole } = require('../middleware/auth');
 
 // Attendance routes
 router.get('/', auth, attendanceController.getAllAttendance);
+router.get('/today', auth, attendanceController.getTodayAttendance);
 router.get('/report', auth, checkRole('Admin', 'HR', 'Manager'), attendanceController.getAttendanceReport);
 router.get('/employee/:empId', auth, attendanceController.getEmployeeAttendance);
 router.get('/:id', auth, attendanceController.getAttendanceById);

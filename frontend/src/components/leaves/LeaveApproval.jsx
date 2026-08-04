@@ -20,8 +20,10 @@ import {
   Alert
 } from '@mui/material';
 import { leaveAPI } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 export default function LeaveApproval() {
+  const { user } = useAuth();
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
@@ -49,6 +51,11 @@ export default function LeaveApproval() {
     setSnackbar({ open: true, message, severity });
   };
 
+  const isReportingManager = (leave) =>
+    !!user?.employee?._id &&
+    !!leave.reportingManager?._id &&
+    String(user.employee._id) === String(leave.reportingManager._id);
+
   const handleOpenDialog = (leave, actionType) => {
     setSelectedLeave(leave);
     setAction(actionType);
@@ -61,7 +68,7 @@ export default function LeaveApproval() {
         await leaveAPI.approveLeave(selectedLeave._id, { remarks });
         showSnackbar('Leave approved successfully!', 'success');
       } else {
-        await leaveAPI.rejectLeave(selectedLeave._id, { remarks });
+        await leaveAPI.rejectLeave(selectedLeave._id, { rejectionReason: remarks });
         showSnackbar('Leave rejected successfully!', 'success');
       }
       setOpenDialog(false);
@@ -87,6 +94,7 @@ export default function LeaveApproval() {
               <TableCell>Start Date</TableCell>
               <TableCell>End Date</TableCell>
               <TableCell>Days</TableCell>
+              <TableCell>Reporting Manager</TableCell>
               <TableCell>Reason</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Actions</TableCell>
@@ -95,11 +103,11 @@ export default function LeaveApproval() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} align="center">Loading...</TableCell>
+                <TableCell colSpan={9} align="center">Loading...</TableCell>
               </TableRow>
             ) : leaves.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} align="center">
+                <TableCell colSpan={9} align="center">
                   No pending leave approvals
                 </TableCell>
               </TableRow>
@@ -109,32 +117,43 @@ export default function LeaveApproval() {
                   <TableCell>
                     {leave.employee?.personalInfo?.firstName} {leave.employee?.personalInfo?.lastName}
                   </TableCell>
-                  <TableCell>{leave.leaveType?.leaveName}</TableCell>
+                  <TableCell>{leave.leaveType?.leaveTypeName}</TableCell>
                   <TableCell>{new Date(leave.startDate).toLocaleDateString()}</TableCell>
                   <TableCell>{new Date(leave.endDate).toLocaleDateString()}</TableCell>
-                  <TableCell>{leave.totalDays}</TableCell>
+                  <TableCell>{leave.numberOfDays}</TableCell>
+                  <TableCell>
+                    {leave.reportingManager
+                      ? `${leave.reportingManager.personalInfo?.firstName} ${leave.reportingManager.personalInfo?.lastName}`
+                      : '—'}
+                  </TableCell>
                   <TableCell>{leave.reason}</TableCell>
                   <TableCell>
                     <Chip label="Pending" color="warning" size="small" />
                   </TableCell>
                   <TableCell>
-                    <Button
-                      variant="contained"
-                      color="success"
-                      size="small"
-                      onClick={() => handleOpenDialog(leave, 'approve')}
-                      sx={{ mr: 1 }}
-                    >
-                      Approve
-                    </Button>
-                    <Button
-                      variant="contained"
-                      color="error"
-                      size="small"
-                      onClick={() => handleOpenDialog(leave, 'reject')}
-                    >
-                      Reject
-                    </Button>
+                    {isReportingManager(leave) ? (
+                      <>
+                        <Button
+                          variant="contained"
+                          color="success"
+                          size="small"
+                          onClick={() => handleOpenDialog(leave, 'approve')}
+                          sx={{ mr: 1 }}
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          variant="contained"
+                          color="error"
+                          size="small"
+                          onClick={() => handleOpenDialog(leave, 'reject')}
+                        >
+                          Reject
+                        </Button>
+                      </>
+                    ) : (
+                      <Chip label="View only" size="small" variant="outlined" />
+                    )}
                   </TableCell>
                 </TableRow>
               ))

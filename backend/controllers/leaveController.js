@@ -1,6 +1,7 @@
 const LeaveType = require('../models/LeaveType');
 const LeaveBalance = require('../models/LeaveBalance');
 const LeaveApplication = require('../models/LeaveApplication');
+const Employee = require('../models/Employee');
 
 // LEAVE TYPE CONTROLLERS
 
@@ -80,6 +81,7 @@ exports.getAllLeaves = async (req, res) => {
       .populate('employee', 'personalInfo employeeId employmentInfo')
       .populate('leaveType', 'leaveTypeName leaveCode')
       .populate('approver', 'personalInfo employeeId')
+      .populate('reportingManager', 'personalInfo employeeId')
       .limit(limit * 1)
       .skip((page - 1) * limit)
       .sort({ appliedDate: -1 });
@@ -102,7 +104,8 @@ exports.getLeaveById = async (req, res) => {
     const leave = await LeaveApplication.findById(req.params.id)
       .populate('employee')
       .populate('leaveType')
-      .populate('approver');
+      .populate('approver')
+      .populate('reportingManager');
 
     if (!leave) {
       return res.status(404).json({ message: 'Leave application not found' });
@@ -117,14 +120,37 @@ exports.getLeaveById = async (req, res) => {
 exports.applyLeave = async (req, res) => {
   try {
     const {
+      employee: assignedEmployee,
       leaveType,
       startDate,
       endDate,
       reason
     } = req.body;
 
-    // Use authenticated user's ID
-    const employee = req.user._id;
+    // Determine the employee: Admin/HR/Manager can assign leave on behalf of a
+    // specific employee; otherwise use the employee attached to the account.
+    let employee;
+    if (assignedEmployee) {
+      if (!['Admin', 'HR', 'Manager'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Not authorized to assign leave to another employee' });
+      }
+      employee = assignedEmployee;
+    } else {
+      employee = req.user.employee?._id || req.user._id;
+    }
+
+    // Fetch the employee record to validate reporting manager exists
+    const employeeDoc = await Employee.findById(employee);
+    if (!employeeDoc) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    const reportingManager = employeeDoc.employmentInfo?.reportingManager;
+    if (!reportingManager) {
+      return res.status(400).json({
+        message: 'A reporting manager must be assigned to this employee before applying for leave. Please contact your administrator.'
+      });
+    }
 
     // Calculate number of days
     const start = new Date(startDate);
@@ -173,6 +199,7 @@ exports.applyLeave = async (req, res) => {
       numberOfDays,
       reason,
       status: 'Pending',
+      reportingManager,
       appliedDate: new Date()
     });
 
@@ -249,6 +276,12 @@ exports.approveLeave = async (req, res) => {
       return res.status(400).json({ message: 'Leave is not in pending status' });
     }
 
+    // Only the reporting manager of this leave can approve it
+    const managerId = req.user.employee?._id;
+    if (!managerId || String(leave.reportingManager) !== String(managerId)) {
+      return res.status(403).json({ message: 'Only the reporting manager can approve this leave request' });
+    }
+
     leave.status = 'Approved';
     leave.approver = req.user.employee;
     leave.approvedDate = new Date();
@@ -291,6 +324,12 @@ exports.rejectLeave = async (req, res) => {
 
     if (leave.status !== 'Pending') {
       return res.status(400).json({ message: 'Leave is not in pending status' });
+    }
+
+    // Only the reporting manager of this leave can reject it
+    const managerId = req.user.employee?._id;
+    if (!managerId || String(leave.reportingManager) !== String(managerId)) {
+      return res.status(403).json({ message: 'Only the reporting manager can reject this leave request' });
     }
 
     leave.status = 'Rejected';
@@ -346,7 +385,7 @@ exports.updateLeaveBalance = async (req, res) => {
 exports.getMyLeaveBalance = async (req, res) => {
   try {
     const { year = new Date().getFullYear() } = req.query;
-    const employee = req.user._id;
+    const employee = req.user.employee?._id || req.user._id;
 
     const balances = await LeaveBalance.find({
       employee,
@@ -359,14 +398,19 @@ exports.getMyLeaveBalance = async (req, res) => {
   }
 };
 
-// Get current user's leaves
+// Get current user's leaves (all leaves for Admin/HR/Manager)
 exports.getMyLeaves = async (req, res) => {
   try {
-    const employee = req.user._id;
+    const isPrivileged = ['Admin', 'HR', 'Manager'].includes(req.user.role);
+    const query = isPrivileged
+      ? {}
+      : { employee: req.user.employee?._id || req.user._id };
 
-    const leaves = await LeaveApplication.find({ employee })
+    const leaves = await LeaveApplication.find(query)
+      .populate('employee', 'personalInfo employeeId employmentInfo')
       .populate('leaveType', 'leaveTypeName leaveCode')
       .populate('approver', 'personalInfo employeeId')
+      .populate('reportingManager', 'personalInfo employeeId')
       .sort({ appliedDate: -1 });
 
     res.json({ leaves });
@@ -375,12 +419,24 @@ exports.getMyLeaves = async (req, res) => {
   }
 };
 
-// Get pending leaves for approval
+// Get pending leaves for approval (Admin/HR see all, Managers see their team's)
 exports.getPendingLeaves = async (req, res) => {
   try {
-    const leaves = await LeaveApplication.find({ status: 'Pending' })
+    const isPrivileged = ['Admin', 'HR'].includes(req.user.role);
+    const query = { status: 'Pending' };
+
+    if (!isPrivileged) {
+      const managerId = req.user.employee?._id;
+      if (!managerId) {
+        return res.json({ leaves: [] });
+      }
+      query.reportingManager = managerId;
+    }
+
+    const leaves = await LeaveApplication.find(query)
       .populate('employee', 'personalInfo employeeId')
       .populate('leaveType', 'leaveTypeName leaveCode')
+      .populate('reportingManager', 'personalInfo employeeId')
       .sort({ appliedDate: -1 });
 
     res.json({ leaves });

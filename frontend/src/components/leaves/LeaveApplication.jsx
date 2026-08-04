@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -12,12 +12,16 @@ import {
   Grid
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { leaveAPI } from '../../services/api';
+import { leaveAPI, employeeAPI } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 export default function LeaveApplication() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [leaveTypes, setLeaveTypes] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [formData, setFormData] = useState({
+    employee: '',
     leaveType: '',
     startDate: '',
     endDate: '',
@@ -25,18 +29,36 @@ export default function LeaveApplication() {
   });
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
-  useEffect(() => {
-    loadLeaveTypes();
-  }, []);
+  const canAssignLeave = ['Admin', 'HR', 'Manager'].includes(user?.role);
+  const myManager = user?.employee?.employmentInfo?.reportingManager;
+  const managerName = myManager?.personalInfo
+    ? `${myManager.personalInfo.firstName} ${myManager.personalInfo.lastName}`
+    : null;
 
-  const loadLeaveTypes = async () => {
+  const loadLeaveTypes = useCallback(async () => {
     try {
       const response = await leaveAPI.getLeaveTypes();
       setLeaveTypes(response.data.leaveTypes || []);
     } catch (error) {
       console.error('Error loading leave types:', error);
     }
-  };
+  }, []);
+
+  const loadEmployees = useCallback(async () => {
+    try {
+      const response = await employeeAPI.getAll({ limit: 100, isActive: true });
+      setEmployees(response.data.employees || []);
+    } catch (error) {
+      console.error('Error loading employees:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadLeaveTypes();
+    if (canAssignLeave) {
+      loadEmployees();
+    }
+  }, [canAssignLeave, loadEmployees, loadLeaveTypes]);
 
   const showSnackbar = (message, severity = 'success') => {
     setSnackbar({ open: true, message, severity });
@@ -45,7 +67,11 @@ export default function LeaveApplication() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await leaveAPI.applyLeave(formData);
+      const payload = { ...formData };
+      if (!canAssignLeave || !payload.employee) {
+        delete payload.employee;
+      }
+      await leaveAPI.applyLeave(payload);
       showSnackbar('Leave application submitted successfully!', 'success');
       setTimeout(() => navigate('/leaves'), 1500);
     } catch (error) {
@@ -59,11 +85,42 @@ export default function LeaveApplication() {
         Apply for Leave
       </Typography>
 
+      {!canAssignLeave && (
+        managerName ? (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Your leave request will be routed to your reporting manager <strong>{managerName}</strong> for approval.
+          </Alert>
+        ) : (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            No reporting manager is assigned to your profile. Contact your administrator to assign one before applying for leave.
+          </Alert>
+        )
+      )}
+
       <Card elevation={3}>
         <CardContent>
           <form onSubmit={handleSubmit}>
             <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
+              {canAssignLeave && (
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    required
+                    fullWidth
+                    select
+                    label="Assign to Employee"
+                    value={formData.employee}
+                    onChange={(e) => setFormData({ ...formData, employee: e.target.value })}
+                  >
+                    <MenuItem value="">Select Employee</MenuItem>
+                    {employees.map((emp) => (
+                      <MenuItem key={emp._id} value={emp._id}>
+                        {emp.employeeId} - {emp.personalInfo?.firstName} {emp.personalInfo?.lastName}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
+              )}
+              <Grid item xs={12} md={canAssignLeave ? 6 : 12}>
                 <TextField
                   required
                   fullWidth
